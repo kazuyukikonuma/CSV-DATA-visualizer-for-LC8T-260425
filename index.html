@@ -155,6 +155,31 @@ table.std tr:nth-child(even) td{background:rgba(247,246,243,.6)}
 .insight.open .insight-body{display:block}
 .insight.open .insight-arrow{transform:rotate(90deg)}
 
+/* ── JOIN panel ── */
+.join-panel{padding:22px 20px 32px}
+.join-panel h2{font-size:15px;font-weight:500;color:var(--text1);margin-bottom:4px}
+.join-panel .sub{font-size:12px;color:var(--text3);margin-bottom:20px}
+.join-block{background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:16px 18px;margin-bottom:14px}
+.join-block h3{font-size:12px;font-weight:600;color:var(--text2);margin-bottom:12px;letter-spacing:.03em}
+.join-row{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px}
+.join-row label{font-size:11.5px;color:var(--text2);width:80px;flex-shrink:0}
+.join-select{flex:1;min-width:140px;padding:6px 10px;border:1px solid var(--border2);border-radius:5px;font-family:var(--font);font-size:12px;color:var(--text1);background:var(--bg);outline:none;cursor:pointer}
+.join-select:focus{border-color:var(--c-learn-d)}
+.join-type-group{display:flex;gap:6px}
+.jtype-btn{padding:5px 14px;border:1px solid var(--border2);border-radius:4px;background:var(--bg);font-family:var(--font);font-size:12px;color:var(--text2);cursor:pointer;transition:all .15s}
+.jtype-btn.active{background:var(--m-mint);border-color:var(--c-around-d);color:#1a1916;font-weight:500}
+.join-run-btn{padding:8px 22px;background:var(--c-learn-d);color:#fff;border:none;border-radius:5px;font-family:var(--font);font-size:13px;font-weight:500;cursor:pointer;transition:background .15s}
+.join-run-btn:hover{background:#3a6a8a}
+.join-run-btn:disabled{background:var(--text3);cursor:not-allowed}
+.join-result-info{display:flex;gap:14px;flex-wrap:wrap;margin-bottom:14px;padding:12px 16px;background:var(--green-bg);border:1px solid rgba(29,122,95,.2);border-radius:6px}
+.join-result-info .ri{font-size:12px;color:var(--green)}
+.join-result-info .ri strong{font-family:var(--mono);font-size:14px}
+.join-warn{padding:10px 14px;background:var(--amber-bg);border:1px solid rgba(150,96,10,.2);border-radius:6px;font-size:12px;color:var(--amber);margin-bottom:12px}
+.dl-btn{padding:6px 16px;border:1px solid var(--c-learn-d);border-radius:4px;background:var(--bg);color:var(--c-learn-d);font-family:var(--font);font-size:12px;cursor:pointer;transition:all .15s}
+.dl-btn:hover{background:var(--c-learn-d);color:#fff}
+.sidebar-join-btn{width:100%;padding:8px;background:var(--m-peach);border:1px solid rgba(150,100,0,.2);border-radius:5px;font-family:var(--font);font-size:12px;font-weight:500;color:#5a3a00;cursor:pointer;transition:all .15s;text-align:center}
+.sidebar-join-btn:hover{background:#f5ca80}
+
 ::-webkit-scrollbar{width:5px;height:5px}
 ::-webkit-scrollbar-track{background:transparent}
 ::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px}
@@ -194,6 +219,9 @@ table.std tr:nth-child(even) td{background:rgba(247,246,243,.6)}
       </div>
     </div>
     <div class="file-list" id="fileList"></div>
+    <div id="joinBtnWrap" style="display:none">
+      <button class="sidebar-join-btn" onclick="showJoin()">🔗 JOIN / 結合分析</button>
+    </div>
   </aside>
 
   <main class="main">
@@ -203,6 +231,7 @@ table.std tr:nth-child(even) td{background:rgba(247,246,243,.6)}
       <p data-i18n="welcome_desc">左パネルにCSVをドロップするか、クリックして選択してください。顧客ID・会員データ・販売データなど、各ファイルの構造を即座に可視化します。</p>
     </div>
     <div id="analyzeArea" style="display:none"></div>
+    <div id="joinArea" style="display:none"></div>
   </main>
 </div>
 </div>
@@ -225,6 +254,12 @@ const I18N={
     null_legend:'🟢 正常（0-5%）　🟡 注意（5-20%）　🔴 要確認（20%以上）',
     insight_label:'インサイト / 解釈',no_data:'データなし',
     lbl_min:'min',lbl_avg:'avg',lbl_max:'max',lbl_null_pct:'NULL率',lbl_unique:'ユニーク',
+    join_title:'JOIN 結合分析',join_sub:'2つのCSVを選択してキー列を指定し、結合します。',
+    join_left:'左テーブル',join_right:'右テーブル',join_lkey:'左キー列',join_rkey:'右キー列',
+    join_type:'JOIN種別',join_run:'結合を実行',join_result:'結合結果',
+    join_rows:'結合後行数',join_cols:'カラム数',join_matched:'マッチ率',join_unmatched:'未マッチ（左）',
+    join_dl_view:'結果を表示',join_dl_csv:'CSVダウンロード',
+    join_need2:'CSVを2つ以上読み込んでください',join_select_file:'ファイルを選択',join_select_col:'キー列を選択',
   },
   zh:{
     header_title:'CSV 資料視覺化工具',sidebar_files:'資料檔案',
@@ -241,6 +276,12 @@ const I18N={
     null_legend:'🟢 正常（0-5%）　🟡 注意（5-20%）　🔴 需確認（20%以上）',
     insight_label:'洞察 / 解讀',no_data:'無資料',
     lbl_min:'最小',lbl_avg:'平均',lbl_max:'最大',lbl_null_pct:'NULL率',lbl_unique:'唯一值',
+    join_title:'JOIN 結合分析',join_sub:'選擇兩個CSV並指定鍵欄位進行結合。',
+    join_left:'左資料表',join_right:'右資料表',join_lkey:'左鍵欄位',join_rkey:'右鍵欄位',
+    join_type:'JOIN類型',join_run:'執行結合',join_result:'結合結果',
+    join_rows:'結合後筆數',join_cols:'欄位數',join_matched:'匹配率',join_unmatched:'未匹配（左）',
+    join_dl_view:'查看結果',join_dl_csv:'下載CSV',
+    join_need2:'請先載入2個以上的CSV',join_select_file:'選擇檔案',join_select_col:'選擇鍵欄位',
   }
 };
 let LANG='ja';
@@ -348,7 +389,9 @@ function histBins(vals,bins=18){
 // ── file list ─────────────────────────────────
 function renderFileList(){
   const el=document.getElementById('fileList');
-  if(!S.files.length){el.innerHTML='';return;}
+  const jw=document.getElementById('joinBtnWrap');
+  if(!S.files.length){el.innerHTML='';if(jw)jw.style.display='none';return;}
+  if(jw)jw.style.display=S.files.length>=2?'block':'none';
   el.innerHTML=S.files.map((f,i)=>`
     <div class="file-item${i===S.activeIdx?' active':''}" onclick="selectFile(${i})">
       <div class="file-dot"></div>
@@ -357,7 +400,11 @@ function renderFileList(){
       <button class="file-remove" onclick="rmFile(event,${i})">×</button>
     </div>`).join('');
 }
-function selectFile(i){S.activeIdx=i;renderFileList();renderMain();}
+function selectFile(i){
+  S.activeIdx=i;
+  document.getElementById('joinArea').style.display='none';
+  renderFileList();renderMain();
+}
 function rmFile(e,i){
   e.stopPropagation();S.files.splice(i,1);
   if(S.activeIdx>=S.files.length)S.activeIdx=S.files.length-1;
@@ -544,6 +591,228 @@ function doSearch(){
   const f=S.files[S.activeIdx];const q=document.getElementById('searchInput').value.trim().toLowerCase();
   f._filter=q?f.data.filter(row=>f.columns.some(c=>row[c]&&String(row[c]).toLowerCase().includes(q))):null;
   f._page=1;renderTable();
+}
+
+// ── JOIN engine ───────────────────────────────
+const JS={joinType:'left',leftIdx:-1,rightIdx:-1,leftKey:'',rightKey:'',result:null};
+
+function showJoin(){
+  document.getElementById('welcomeScreen').style.display='none';
+  document.getElementById('analyzeArea').style.display='none';
+  document.getElementById('joinArea').style.display='block';
+  S.activeIdx=-1;
+  renderFileList();
+  renderJoin();
+}
+
+function renderJoin(){
+  const ja=document.getElementById('joinArea');
+  if(!ja)return;
+  if(S.files.length<2){
+    ja.innerHTML=`<div class="join-panel"><p style="color:var(--text3);padding:20px">${t('join_need2')}</p></div>`;
+    return;
+  }
+  const fileOpts=S.files.map((f,i)=>`<option value="${i}">${f.name}</option>`).join('');
+  const li=JS.leftIdx>=0&&JS.leftIdx<S.files.length?JS.leftIdx:0;
+  const ri=JS.rightIdx>=0&&JS.rightIdx<S.files.length?JS.rightIdx:Math.min(1,S.files.length-1);
+  const lCols=S.files[li]?S.files[li].columns:[];
+  const rCols=S.files[ri]?S.files[ri].columns:[];
+  const colOpts=cols=>cols.map(c=>`<option value="${c}">${c}</option>`).join('');
+
+  ja.innerHTML=`<div class="join-panel">
+    <h2>🔗 ${t('join_title')}</h2>
+    <div class="sub">${t('join_sub')}</div>
+
+    <div class="join-block">
+      <h3>① ${LANG==='ja'?'テーブル選択':'資料表選擇'}</h3>
+      <div class="join-row">
+        <label>${t('join_left')}</label>
+        <select class="join-select" id="jLeftFile" onchange="onJoinFileChange()">
+          ${S.files.map((f,i)=>`<option value="${i}" ${i===li?'selected':''}>${f.name}</option>`).join('')}
+        </select>
+      </div>
+      <div class="join-row">
+        <label>${t('join_right')}</label>
+        <select class="join-select" id="jRightFile" onchange="onJoinFileChange()">
+          ${S.files.map((f,i)=>`<option value="${i}" ${i===ri?'selected':''}>${f.name}</option>`).join('')}
+        </select>
+      </div>
+    </div>
+
+    <div class="join-block">
+      <h3>② ${LANG==='ja'?'キー列指定':'鍵欄位指定'}</h3>
+      <div class="join-row">
+        <label>${t('join_lkey')}</label>
+        <select class="join-select" id="jLeftKey">${colOpts(lCols)}</select>
+      </div>
+      <div class="join-row">
+        <label>${t('join_rkey')}</label>
+        <select class="join-select" id="jRightKey">${colOpts(rCols)}</select>
+      </div>
+    </div>
+
+    <div class="join-block">
+      <h3>③ ${t('join_type')}</h3>
+      <div class="join-type-group">
+        <button class="jtype-btn${JS.joinType==='left'?' active':''}" onclick="setJoinType('left')">LEFT JOIN</button>
+        <button class="jtype-btn${JS.joinType==='inner'?' active':''}" onclick="setJoinType('inner')">INNER JOIN</button>
+      </div>
+      <div style="font-size:11px;color:var(--text3);margin-top:8px">
+        ${JS.joinType==='left'
+          ?(LANG==='ja'?'左テーブル全件 + 右テーブルはマッチした行のみ付加':'左資料表全部保留，右資料表只附加匹配行')
+          :(LANG==='ja'?'両方にある顧客IDのみ残す':'只保留兩側都存在的顧客ID')}
+      </div>
+    </div>
+
+    <button class="join-run-btn" onclick="doJoin()">▶ ${t('join_run')}</button>
+
+    <div id="joinResultArea"></div>
+  </div>`;
+
+  // restore key selections if available
+  if(JS.leftKey){const s=document.getElementById('jLeftKey');if(s&&[...s.options].some(o=>o.value===JS.leftKey))s.value=JS.leftKey;}
+  if(JS.rightKey){const s=document.getElementById('jRightKey');if(s&&[...s.options].some(o=>o.value===JS.rightKey))s.value=JS.rightKey;}
+
+  if(JS.result)renderJoinResult();
+}
+
+function onJoinFileChange(){
+  const li=parseInt(document.getElementById('jLeftFile').value);
+  const ri=parseInt(document.getElementById('jRightFile').value);
+  JS.leftIdx=li;JS.rightIdx=ri;JS.result=null;
+  // rebuild key selects
+  const lCols=S.files[li]?S.files[li].columns:[];
+  const rCols=S.files[ri]?S.files[ri].columns:[];
+  const colOpts=(cols,id)=>{const s=document.getElementById(id);if(!s)return;s.innerHTML=cols.map(c=>`<option value="${c}">${c}</option>`).join('');};
+  colOpts(lCols,'jLeftKey');colOpts(rCols,'jRightKey');
+  // auto-match key by name
+  autoMatchKey(lCols,rCols);
+}
+
+function autoMatchKey(lCols,rCols){
+  // 共通カラム名を自動検出（顧客ID優先）
+  const priority=['客戶ID','顧客ID','customer_id','客户id','LINE ID','id'];
+  for(const p of priority){
+    const lm=lCols.find(c=>c.toLowerCase()===p.toLowerCase());
+    const rm=rCols.find(c=>c.toLowerCase()===p.toLowerCase());
+    if(lm&&rm){
+      const ls=document.getElementById('jLeftKey');const rs=document.getElementById('jRightKey');
+      if(ls)ls.value=lm;if(rs)rs.value=rm;return;
+    }
+  }
+  // 部分一致
+  for(const lc of lCols){
+    const rm=rCols.find(c=>c.toLowerCase()===lc.toLowerCase());
+    if(rm){
+      const ls=document.getElementById('jLeftKey');const rs=document.getElementById('jRightKey');
+      if(ls)ls.value=lc;if(rs)rs.value=rm;return;
+    }
+  }
+}
+
+function setJoinType(type){
+  JS.joinType=type;JS.result=null;renderJoin();
+}
+
+function doJoin(){
+  const li=parseInt(document.getElementById('jLeftFile').value);
+  const ri=parseInt(document.getElementById('jRightFile').value);
+  const lk=document.getElementById('jLeftKey').value;
+  const rk=document.getElementById('jRightKey').value;
+  if(li===ri){alert(LANG==='ja'?'左右に同じファイルを選択しています':'左右選擇了相同的檔案');return;}
+  if(!lk||!rk){alert(LANG==='ja'?'キー列を選択してください':'請選擇鍵欄位');return;}
+
+  JS.leftIdx=li;JS.rightIdx=ri;JS.leftKey=lk;JS.rightKey=rk;
+
+  const lData=S.files[li].data;const rData=S.files[ri].data;
+  const lCols=S.files[li].columns;const rCols=S.files[ri].columns;
+
+  // 右テーブルをキーでMap化
+  const rMap=new Map();
+  rData.forEach(row=>{
+    const k=row[rk];
+    if(k==null)return;
+    const key=String(k).trim();
+    if(!rMap.has(key))rMap.set(key,[]);
+    rMap.get(key).push(row);
+  });
+
+  // 右テーブルの重複しないカラム（キー列は除く）
+  const rExtraCols=rCols.filter(c=>c!==rk&&!lCols.includes(c));
+  const allCols=[...lCols,...rExtraCols];
+
+  const joined=[];
+  let matched=0;
+  lData.forEach(lrow=>{
+    const k=lrow[lk];const key=k!=null?String(k).trim():null;
+    const rrows=key?rMap.get(key):null;
+    if(rrows&&rrows.length>0){
+      matched++;
+      rrows.forEach(rrow=>{
+        const merged={...lrow};
+        rExtraCols.forEach(c=>{merged[c]=rrow[c]??null;});
+        joined.push(merged);
+      });
+    } else {
+      if(JS.joinType==='left'){
+        const merged={...lrow};
+        rExtraCols.forEach(c=>{merged[c]=null;});
+        joined.push(merged);
+      }
+    }
+  });
+
+  const matchPct=lData.length?matched/lData.length*100:0;
+  const unmatched=lData.length-matched;
+
+  JS.result={data:joined,columns:allCols,matchPct,matched,unmatched,lFile:S.files[li].name,rFile:S.files[ri].name,lKey:lk,rKey:rk};
+  renderJoinResult();
+}
+
+function renderJoinResult(){
+  const r=JS.result;if(!r)return;
+  const ra=document.getElementById('joinResultArea');if(!ra)return;
+  const warnHtml=r.matchPct<50?`<div class="join-warn">⚠ ${LANG==='ja'?`マッチ率が${r.matchPct.toFixed(1)}%と低いです。キー列の値の形式が異なる可能性があります（例：スペース・大文字小文字・全角半角）。`:`匹配率僅${r.matchPct.toFixed(1)}%，鍵值格式可能不一致（空格、大小寫、全半形等）。`}</div>`:'';
+  ra.innerHTML=`
+    <div style="margin-top:20px">
+      <div class="section-title">${t('join_result')}</div>
+      ${warnHtml}
+      <div class="join-result-info">
+        <div class="ri">${t('join_rows')}: <strong>${r.data.length.toLocaleString()}</strong></div>
+        <div class="ri">${t('join_cols')}: <strong>${r.columns.length}</strong></div>
+        <div class="ri">${t('join_matched')}: <strong>${r.matchPct.toFixed(1)}%</strong></div>
+        <div class="ri">${t('join_unmatched')}: <strong>${r.unmatched.toLocaleString()}</strong></div>
+      </div>
+      <div style="display:flex;gap:8px;margin-bottom:14px">
+        <button class="dl-btn" onclick="showJoinTable()">📋 ${t('join_dl_view')}</button>
+        <button class="dl-btn" onclick="downloadJoinCSV()">⬇ ${t('join_dl_csv')}</button>
+      </div>
+      <div id="joinTableArea"></div>
+    </div>`;
+}
+
+function showJoinTable(){
+  const r=JS.result;if(!r)return;
+  const el=document.getElementById('joinTableArea');if(!el)return;
+  const PAGE=100;
+  const slice=r.data.slice(0,PAGE);
+  el.innerHTML=`
+    <div class="table-wrap"><table class="std">
+      <thead><tr><th class="num">#</th>${r.columns.map(c=>`<th title="${c}">${c.length>16?c.slice(0,14)+'…':c}</th>`).join('')}</tr></thead>
+      <tbody>${slice.map((row,i)=>`<tr><td class="num" style="color:var(--text3)">${i+1}</td>${r.columns.map(c=>{const v=row[c];if(v==null||v==='')return`<td><span style="color:var(--text3);font-style:italic;font-size:11px">null</span></td>`;const d=String(v).length>28?String(v).slice(0,26)+'…':String(v);return`<td title="${String(v)}">${d}</td>`;}).join('')}</tr>`).join('')}</tbody>
+    </table></div>
+    ${r.data.length>PAGE?`<div style="font-size:11px;color:var(--text3);padding:8px 0">${LANG==='ja'?`先頭${PAGE}件を表示（全${r.data.length.toLocaleString()}件）。全件はCSVダウンロードで確認。`:`顯示前${PAGE}筆（共${r.data.length.toLocaleString()}筆）。全部請下載CSV。`}</div>`:''}
+  `;
+}
+
+function downloadJoinCSV(){
+  const r=JS.result;if(!r||!r.data.length)return;
+  const esc=v=>{const s=v==null?'':String(v);return s.includes(',')||s.includes('"')||s.includes('\n')?`"${s.replace(/"/g,'""')}"`:s;};
+  const lines=[r.columns.map(esc).join(','),...r.data.map(row=>r.columns.map(c=>esc(row[c])).join(','))];
+  const blob=new Blob(['\uFEFF'+lines.join('\n')],{type:'text/csv;charset=utf-8'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);
+  a.download=`joined_${r.lFile.replace('.csv','')}_x_${r.rFile.replace('.csv','')}.csv`;
+  a.click();URL.revokeObjectURL(a.href);
 }
 
 // ── load files ────────────────────────────────
