@@ -464,7 +464,7 @@ function renderMain(){
         <td><span class="col-type type-${a.type}">${a.type}</span></td>
         <td class="num" style="color:${a.nullPct>20?'var(--red)':a.nullPct>5?'var(--amber)':'var(--text3)'}">${a.nullPct.toFixed(1)}%</td>
         <td class="num">${a.unique.toLocaleString()}</td>
-        <td style="color:var(--text2)">${a.sample.slice(0,3).join('、')}</td>
+        <td>${a.sample.slice(0,3).map(v=>{const s=String(v);const d=s.length>20?s.slice(0,18)+'…':s;return`<span style="display:inline-block;font-size:10.5px;padding:1px 6px;margin:1px 2px 1px 0;background:var(--bg2);border:1px solid var(--border);border-radius:3px;color:var(--text2);max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;vertical-align:middle" title="${s}">${d}</span>`;}).join('')}</td>
       </tr>`).join('')}</tbody>
     </table></div>
     ${buildInsight('overview',analyzed)}
@@ -478,7 +478,7 @@ function renderMain(){
         <div class="col-top"><div class="col-name">${a.col}</div><span class="col-type type-${a.type}">${a.type}</span></div>
         <div class="bar-row"><div class="bar-lbl">${t('lbl_null_pct')}</div><div class="bar-track"><div class="bar-fill fill-null" style="width:${Math.min(100,a.nullPct)}%"></div></div><div class="bar-pct">${a.nullPct.toFixed(1)}%</div></div>
         <div class="bar-row"><div class="bar-lbl">${t('lbl_unique')}</div><div class="bar-track"><div class="bar-fill fill-unique" style="width:${Math.min(100,a.uniquePct)}%"></div></div><div class="bar-pct">${a.unique.toLocaleString()}</div></div>
-        <div class="samples">${a.sample.map(v=>`<span class="sample-val">${v}</span>`).join('')}</div>
+        <div class="samples">${a.sample.map(v=>{const s=String(v);const d=s.length>24?s.slice(0,22)+'…':s;return`<span class="sample-val" title="${s}">${d}</span>`;}).join('')}</div>
       </div>`).join('')}
     </div>
   </div>
