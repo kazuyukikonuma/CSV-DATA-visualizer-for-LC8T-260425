@@ -371,7 +371,7 @@ function analyze(col,data){
   const uniquePct=nn.length?unique/nn.length*100:0;
   let stats={};
   if(type==='num'){const nums=nn.map(v=>parseFloat(v)).filter(v=>!isNaN(v));if(nums.length){nums.sort((a,b)=>a-b);stats={min:nums[0],max:nums[nums.length-1],mean:nums.reduce((a,b)=>a+b,0)/nums.length,median:nums[Math.floor(nums.length/2)]};}}
-  const sample=[...new Set(nn.slice(0,100))].slice(0,6);
+  const sample=[...new Set(nn.slice(0,100))].slice(0,6).map(v=>String(v).length>30?String(v).slice(0,28)+'…':String(v));
   let topVals=[];
   if(type==='str'&&unique<=60){const f={};nn.forEach(v=>{f[v]=(f[v]||0)+1;});topVals=Object.entries(f).sort((a,b)=>b[1]-a[1]).slice(0,8);}
   return{col,type,total,nulls,nullPct,unique,uniquePct,stats,sample,topVals};
