@@ -523,7 +523,19 @@ function renderMain(){
 </div>`;
 
   if(tab==='data'){f._page=1;f._filter=null;renderTable();}
-  if(tab==='chart'){setTimeout(()=>renderCharts(analyzed,numCols,catCols),60);}
+  if(tab==='chart'){waitAndRenderCharts(analyzed,numCols,catCols);}
+}
+
+function waitAndRenderCharts(analyzed,numCols,catCols,attempts){
+  attempts=attempts||0;
+  // Chart.jsロード確認 + 最初のcanvas存在確認
+  const firstId=numCols.length?'cvs-n0':catCols.length?'cvs-c0':null;
+  if(!firstId)return;
+  if(typeof Chart==='undefined'||!document.getElementById(firstId)){
+    if(attempts<40){setTimeout(()=>waitAndRenderCharts(analyzed,numCols,catCols,attempts+1),80);}
+    return;
+  }
+  renderCharts(analyzed,numCols,catCols);
 }
 
 function buildInsight(id,analyzed){
@@ -538,7 +550,7 @@ function toggleInsight(id){const el=document.getElementById('insight-'+id);if(el
 function switchTab(tab){
   S.files[S.activeIdx].tab=tab;renderMain();
   if(tab==='data'){S.files[S.activeIdx]._page=1;S.files[S.activeIdx]._filter=null;renderTable();}
-  if(tab==='chart'){const f=S.files[S.activeIdx];const a=f.columns.map(c=>analyze(c,f.data));setTimeout(()=>renderCharts(a,a.filter(x=>x.type==='num'),a.filter(x=>x.type==='str'&&x.topVals.length>0)),60);}
+  if(tab==='chart'){const f=S.files[S.activeIdx];const a=f.columns.map(c=>analyze(c,f.data));const nc=a.filter(x=>x.type==='num');const cc=a.filter(x=>x.type==='str'&&x.topVals.length>0);waitAndRenderCharts(a,nc,cc);}
 }
 
 // ── charts ────────────────────────────────────
