@@ -547,58 +547,61 @@ function switchTab(tab){
 const MACARONS=['#AED6F1','#FFDBA4','#B5EAD7','#C7CEEA','#FFB7C5','#FFF4A3'];
 
 function svgHistogram(a){
-  const result=histBins(a.sample.length?null:null,16);// dummy, we use analyze stats
-  // rebuild bins from topVals not available for num - use stats
-  // Actually pull raw vals from current file
+  // analyzeで既にstats計算済み。bins用に数値サンプルを使う
   const f=S.files[S.activeIdx];
-  const vals=f.data.map(r=>r[a.col]).filter(v=>v!=null&&v!=='').map(v=>parseFloat(v)).filter(v=>!isNaN(v));
-  if(!vals.length)return`<div class="chart-box"><div class="chart-box-title">${a.col}</div><div style="color:var(--text3);font-size:11px;padding:10px">データなし</div></div>`;
-  // sample large arrays
-  const sample=vals.length>10000?vals.filter((_,i)=>i%Math.ceil(vals.length/10000)===0):vals;
-  let mn=sample[0],mx=sample[0];
-  sample.forEach(v=>{if(v<mn)mn=v;if(v>mx)mx=v;});
+  const LIMIT=5000;
+  const raw=f.data;
+  const step=raw.length>LIMIT?Math.ceil(raw.length/LIMIT):1;
+  const nums=[];
+  for(let i=0;i<raw.length;i+=step){
+    const v=parseFloat(raw[i][a.col]);
+    if(!isNaN(v))nums.push(v);
+  }
+  if(!nums.length){
+    return`<div class="chart-box"><div class="chart-box-title">${a.col}</div><div style="color:var(--text3);font-size:11px;padding:10px">データなし</div></div>`;
+  }
+  let mn=nums[0],mx=nums[0];
+  for(let i=1;i<nums.length;i++){if(nums[i]<mn)mn=nums[i];if(nums[i]>mx)mx=nums[i];}
   const BINS=16;
-  const w=mx===mn?1:(mx-mn)/BINS;
+  const bw=mn===mx?1:(mx-mn)/BINS;
   const counts=Array(BINS).fill(0);
-  sample.forEach(v=>{let i=Math.floor((v-mn)/w);if(i>=BINS)i=BINS-1;counts[i]++;});
-  const maxC=Math.max(...counts,1);
-  const W=260,H=110,PAD=6,barW=Math.floor((W-PAD*2)/BINS)-1;
-  const bars=counts.map((c,i)=>{
-    const bh=Math.max(2,Math.round(c/maxC*(H-20)));
-    const x=PAD+i*(barW+1);
-    const y=H-bh;
-    return`<rect x="${x}" y="${y}" width="${barW}" height="${bh}" fill="#A8C5DA" rx="1"/>`;
+  nums.forEach(v=>{let i=Math.floor((v-mn)/bw);if(i>=BINS)i=BINS-1;counts[i]++;});
+  const maxC=Math.max.apply(null,counts.concat([1]));
+  // SVG描画
+  const W=240,H=100,PL=4,barW=Math.floor((W-PL*2)/BINS)-1;
+  const rects=counts.map((c,i)=>{
+    const bh=Math.max(2,Math.round(c/maxC*(H-16)));
+    const x=PL+i*(barW+1),y=H-4-bh;
+    return`<rect x="${x}" y="${y}" width="${barW}" height="${bh}" fill="#A8C5DA" rx="1" opacity=".9"/>`;
   }).join('');
-  const subText=a.stats&&a.stats.min!=null
-    ?`<span>${t('lbl_min')} ${a.stats.min.toLocaleString(undefined,{maximumFractionDigits:1})}</span><span>${t('lbl_avg')} ${a.stats.mean.toLocaleString(undefined,{maximumFractionDigits:1})}</span><span>${t('lbl_max')} ${a.stats.max.toLocaleString(undefined,{maximumFractionDigits:1})}</span>`:'';
+  const baseline=`<line x1="${PL}" y1="${H-4}" x2="${W-PL}" y2="${H-4}" stroke="#e2dfd8" stroke-width="1"/>`;
+  const sub=a.stats&&a.stats.min!=null
+    ?`<div class="chart-box-sub"><span>${t('lbl_min')} ${a.stats.min.toLocaleString(undefined,{maximumFractionDigits:1})}</span><span>${t('lbl_avg')} ${a.stats.mean.toLocaleString(undefined,{maximumFractionDigits:1})}</span><span>${t('lbl_max')} ${a.stats.max.toLocaleString(undefined,{maximumFractionDigits:1})}</span></div>`:'';
   return`<div class="chart-box">
     <div class="chart-box-title">${a.col}</div>
-    <svg width="100%" viewBox="0 0 ${W} ${H}" style="display:block;overflow:visible">${bars}
-      <line x1="${PAD}" y1="${H}" x2="${W-PAD}" y2="${H}" stroke="#e2dfd8" stroke-width="1"/>
-    </svg>
-    ${subText?`<div class="chart-box-sub">${subText}</div>`:''}
+    <svg width="100%" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" style="display:block;height:110px">${rects}${baseline}</svg>
+    ${sub}
   </div>`;
 }
 
 function svgBarH(a){
   if(!a.topVals||!a.topVals.length)return'';
-  const maxV=a.topVals[0][1]||1;
-  const W=260,ROW=22,PAD=4,LABEL=90,BAR=W-LABEL-PAD*2-24;
-  const rows=a.topVals.slice(0,8).map(([k,v],i)=>{
+  const items=a.topVals.slice(0,8);
+  const maxV=items[0][1]||1;
+  const ROW=24,LABEL=88,BAR=140,VPAD=4;
+  const H=items.length*ROW+VPAD*2;
+  const rows=items.map(([k,v],i)=>{
     const bw=Math.max(2,Math.round(v/maxV*BAR));
-    const lbl=k.length>12?k.slice(0,11)+'…':k;
+    const lbl=k.length>13?k.slice(0,12)+'…':k;
     const fill=MACARONS[i%MACARONS.length];
-    const y=i*ROW;
-    return`<g transform="translate(0,${y})">
-      <text x="${LABEL-4}" y="${ROW/2+4}" font-size="10" fill="#6b6860" text-anchor="end">${lbl}</text>
-      <rect x="${LABEL}" y="4" width="${bw}" height="${ROW-8}" fill="${fill}" rx="2"/>
-      <text x="${LABEL+bw+4}" y="${ROW/2+4}" font-size="10" fill="#6b6860">${v.toLocaleString()}</text>
-    </g>`;
+    const cy=VPAD+i*ROW+ROW/2;
+    return`<text x="${LABEL-6}" y="${cy+4}" font-size="10" fill="#6b6860" text-anchor="end" font-family="sans-serif">${lbl}</text>`+
+      `<rect x="${LABEL}" y="${cy-8}" width="${bw}" height="16" fill="${fill}" rx="2"/>`+
+      `<text x="${LABEL+bw+5}" y="${cy+4}" font-size="10" fill="#6b6860" font-family="sans-serif">${v.toLocaleString()}</text>`;
   }).join('');
-  const H=a.topVals.slice(0,8).length*ROW+PAD;
   return`<div class="chart-box">
     <div class="chart-box-title">${a.col}</div>
-    <svg width="100%" viewBox="0 0 ${W} ${H}" style="display:block;overflow:visible">${rows}</svg>
+    <svg width="100%" viewBox="0 0 ${LABEL+BAR+60} ${H}" style="display:block;height:${H}px;overflow:visible">${rows}</svg>
   </div>`;
 }
 
