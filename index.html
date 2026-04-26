@@ -4,7 +4,6 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>CSV データ可視化ツール — Benesse TW</title>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <style>
 :root{
   --bg:#fff;--bg2:#f7f6f3;--bg3:#efede8;
@@ -494,17 +493,12 @@ function renderMain(){
 
   <!-- CHART -->
   <div class="tab-content${tab==='chart'?' active':''}" id="tab-chart">
-    ${numCols.length?`<div class="section-title">${t('sec_num_dist')}</div><div class="chart-grid">${numCols.slice(0,8).map((a,i)=>`
-      <div class="chart-box">
-        <div class="chart-box-title">${a.col}</div>
-        <div id="wrap-cvs-n${i}"><canvas id="cvs-n${i}" height="130" role="img" aria-label="分布グラフ：${a.col}"></canvas></div>
-        ${a.stats.min!=null?`<div class="chart-box-sub"><span>${t('lbl_min')} ${a.stats.min.toLocaleString(undefined,{maximumFractionDigits:1})}</span><span>${t('lbl_avg')} ${a.stats.mean.toLocaleString(undefined,{maximumFractionDigits:1})}</span><span>${t('lbl_max')} ${a.stats.max.toLocaleString(undefined,{maximumFractionDigits:1})}</span></div>`:''}
-      </div>`).join('')}</div>`:''}
-    ${catCols.length?`<div class="section-title">${t('sec_top_vals')}</div><div class="chart-grid">${catCols.slice(0,6).map((a,i)=>`
-      <div class="chart-box">
-        <div class="chart-box-title">${a.col}</div>
-        <div id="wrap-cvs-c${i}"><canvas id="cvs-c${i}" height="130" role="img" aria-label="カテゴリ分布：${a.col}"></canvas></div>
-      </div>`).join('')}</div>`:''}
+    ${numCols.length?`<div class="section-title">${t('sec_num_dist')}</div><div class="chart-grid">
+      ${numCols.slice(0,8).map(a=>svgHistogram(a)).join('')}
+    </div>`:''}
+    ${catCols.length?`<div class="section-title">${t('sec_top_vals')}</div><div class="chart-grid">
+      ${catCols.slice(0,6).map(a=>svgBarH(a)).join('')}
+    </div>`:''}
     ${!numCols.length&&!catCols.length?`<div style="color:var(--text3);padding:24px;text-align:center">チャート化できるカラムが見つかりませんでした</div>`:''}
   </div>
 
@@ -532,21 +526,7 @@ function renderMain(){
 </div>`;
 
   if(tab==='data'){f._page=1;f._filter=null;renderTable();}
-  if(tab==='chart'){
-    // innerHTML挿入後、ブラウザが実際にDOMを構築するのを2フレーム待つ
-    requestAnimationFrame(()=>requestAnimationFrame(()=>renderCharts(analyzed,numCols,catCols)));
-  }
-}
-
-function waitAndRenderCharts(analyzed,numCols,catCols){
-  requestAnimationFrame(()=>requestAnimationFrame(()=>{
-    // Chart.jsが未ロードなら再試行
-    if(typeof Chart==='undefined'){setTimeout(()=>waitAndRenderCharts(analyzed,numCols,catCols),100);return;}
-    // チャートタブが非表示なら強制表示してから描画
-    const panel=document.getElementById('tab-chart');
-    if(panel&&panel.style.display==='none'){panel.style.display='block';}
-    renderCharts(analyzed,numCols,catCols);
-  }));
+  // SVG charts are rendered synchronously inside renderMain - no async needed
 }
 
 function buildInsight(id,analyzed){
@@ -561,38 +541,68 @@ function toggleInsight(id){const el=document.getElementById('insight-'+id);if(el
 function switchTab(tab){
   S.files[S.activeIdx].tab=tab;renderMain();
   if(tab==='data'){S.files[S.activeIdx]._page=1;S.files[S.activeIdx]._filter=null;renderTable();}
-  if(tab==='chart'){const f=S.files[S.activeIdx];const a=f.columns.map(c=>analyze(c,f.data));const nc=a.filter(x=>x.type==='num');const cc=a.filter(x=>x.type==='str'&&x.topVals.length>0);waitAndRenderCharts(a,nc,cc);}
 }
 
-// ── charts ────────────────────────────────────
-function renderCharts(analyzed,numCols,catCols){
-  const macarons=[css('--m-sky'),css('--m-peach'),css('--m-mint'),css('--m-lavender'),css('--m-pink'),css('--m-lemon')];
-  const baseOpts={plugins:{legend:{display:false}},scales:{x:{grid:{display:false},ticks:{font:{size:10},color:css('--text3')}},y:{grid:{color:'rgba(0,0,0,.06)'},ticks:{font:{size:10},color:css('--text3')}}}};
+// ── SVG charts (no external lib) ─────────────
+const MACARONS=['#AED6F1','#FFDBA4','#B5EAD7','#C7CEEA','#FFB7C5','#FFF4A3'];
+
+function svgHistogram(a){
+  const result=histBins(a.sample.length?null:null,16);// dummy, we use analyze stats
+  // rebuild bins from topVals not available for num - use stats
+  // Actually pull raw vals from current file
   const f=S.files[S.activeIdx];
-
-  numCols.slice(0,8).forEach((a,i)=>{
-    const vals=f.data.map(r=>r[a.col]).filter(v=>v!==null);
-    const result=histBins(vals,16);
-    if(!result||!result.counts)return;
-    const{counts:bins,min:mn,max:mx}=result;
-    const w=bins.length>1?(mx-mn)/bins.length:1;
-    safeChart(`cvs-n${i}`,()=>({
-      type:'bar',
-      data:{labels:bins.map((_,j)=>(mn+j*w).toLocaleString(undefined,{maximumFractionDigits:1})),datasets:[{data:bins,backgroundColor:css('--c-learn'),borderColor:css('--c-learn-d'),borderWidth:1,borderRadius:2}]},
-      options:{...baseOpts,plugins:{...baseOpts.plugins,tooltip:{callbacks:{label:ctx=>` ${ctx.parsed.y}件`}}}}
-    }));
-  });
-
-  catCols.slice(0,6).forEach((a,i)=>{
-    const lbls=a.topVals.map(([k])=>k.length>14?k.slice(0,12)+'…':k);
-    const vals=a.topVals.map(([,v])=>v);
-    safeChart(`cvs-c${i}`,()=>({
-      type:'bar',
-      data:{labels:lbls,datasets:[{data:vals,backgroundColor:lbls.map((_,j)=>macarons[j%macarons.length]),borderRadius:2,borderWidth:0}]},
-      options:{...baseOpts,indexAxis:'y',plugins:{...baseOpts.plugins,tooltip:{callbacks:{label:ctx=>` ${ctx.parsed.x.toLocaleString()}件`}}},scales:{x:{grid:{color:'rgba(0,0,0,.06)'},ticks:{font:{size:10},color:css('--text3')}},y:{grid:{display:false},ticks:{font:{size:10},color:css('--text1')}}}}
-    }),()=>`<table class="std">${a.topVals.map(([k,v])=>`<tr><td>${k}</td><td class="num">${v.toLocaleString()}</td></tr>`).join('')}</table>`);
-  });
+  const vals=f.data.map(r=>r[a.col]).filter(v=>v!=null&&v!=='').map(v=>parseFloat(v)).filter(v=>!isNaN(v));
+  if(!vals.length)return`<div class="chart-box"><div class="chart-box-title">${a.col}</div><div style="color:var(--text3);font-size:11px;padding:10px">データなし</div></div>`;
+  // sample large arrays
+  const sample=vals.length>10000?vals.filter((_,i)=>i%Math.ceil(vals.length/10000)===0):vals;
+  let mn=sample[0],mx=sample[0];
+  sample.forEach(v=>{if(v<mn)mn=v;if(v>mx)mx=v;});
+  const BINS=16;
+  const w=mx===mn?1:(mx-mn)/BINS;
+  const counts=Array(BINS).fill(0);
+  sample.forEach(v=>{let i=Math.floor((v-mn)/w);if(i>=BINS)i=BINS-1;counts[i]++;});
+  const maxC=Math.max(...counts,1);
+  const W=260,H=110,PAD=6,barW=Math.floor((W-PAD*2)/BINS)-1;
+  const bars=counts.map((c,i)=>{
+    const bh=Math.max(2,Math.round(c/maxC*(H-20)));
+    const x=PAD+i*(barW+1);
+    const y=H-bh;
+    return`<rect x="${x}" y="${y}" width="${barW}" height="${bh}" fill="#A8C5DA" rx="1"/>`;
+  }).join('');
+  const subText=a.stats&&a.stats.min!=null
+    ?`<span>${t('lbl_min')} ${a.stats.min.toLocaleString(undefined,{maximumFractionDigits:1})}</span><span>${t('lbl_avg')} ${a.stats.mean.toLocaleString(undefined,{maximumFractionDigits:1})}</span><span>${t('lbl_max')} ${a.stats.max.toLocaleString(undefined,{maximumFractionDigits:1})}</span>`:'';
+  return`<div class="chart-box">
+    <div class="chart-box-title">${a.col}</div>
+    <svg width="100%" viewBox="0 0 ${W} ${H}" style="display:block;overflow:visible">${bars}
+      <line x1="${PAD}" y1="${H}" x2="${W-PAD}" y2="${H}" stroke="#e2dfd8" stroke-width="1"/>
+    </svg>
+    ${subText?`<div class="chart-box-sub">${subText}</div>`:''}
+  </div>`;
 }
+
+function svgBarH(a){
+  if(!a.topVals||!a.topVals.length)return'';
+  const maxV=a.topVals[0][1]||1;
+  const W=260,ROW=22,PAD=4,LABEL=90,BAR=W-LABEL-PAD*2-24;
+  const rows=a.topVals.slice(0,8).map(([k,v],i)=>{
+    const bw=Math.max(2,Math.round(v/maxV*BAR));
+    const lbl=k.length>12?k.slice(0,11)+'…':k;
+    const fill=MACARONS[i%MACARONS.length];
+    const y=i*ROW;
+    return`<g transform="translate(0,${y})">
+      <text x="${LABEL-4}" y="${ROW/2+4}" font-size="10" fill="#6b6860" text-anchor="end">${lbl}</text>
+      <rect x="${LABEL}" y="4" width="${bw}" height="${ROW-8}" fill="${fill}" rx="2"/>
+      <text x="${LABEL+bw+4}" y="${ROW/2+4}" font-size="10" fill="#6b6860">${v.toLocaleString()}</text>
+    </g>`;
+  }).join('');
+  const H=a.topVals.slice(0,8).length*ROW+PAD;
+  return`<div class="chart-box">
+    <div class="chart-box-title">${a.col}</div>
+    <svg width="100%" viewBox="0 0 ${W} ${H}" style="display:block;overflow:visible">${rows}</svg>
+  </div>`;
+}
+
+function waitAndRenderCharts(){} // no-op, SVG is synchronous
 
 // ── table ─────────────────────────────────────
 function renderTable(){
